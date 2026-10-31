@@ -111,10 +111,13 @@ one Python object per value.
 ## Set up
 
 You need Python 3.14 or newer and
-[uv](https://docs.astral.sh/uv/getting-started/installation/). Run these
-commands from the repository:
+[uv](https://docs.astral.sh/uv/getting-started/installation/). Clone the
+repository, or fork it first on GitHub if you want to push your work, then run
+these commands inside it:
 
 ```sh
+git clone https://github.com/h0rv/grugdb
+cd grugdb
 uv tool install poethepoet
 poe start     # switch to a "work" branch with the exercises blanked out
 poe site      # open the course in your browser

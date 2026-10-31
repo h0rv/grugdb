@@ -33,6 +33,10 @@ nav a {
 nav a:hover, nav a[aria-current] { background: var(--surface); color: var(--accent); }
 nav .number { font-variant-numeric: tabular-nums; opacity: .75; font-size: .75rem; padding-top: .1rem; }
 .side-link { display: block; width: fit-content; margin-top: 1.5rem; font-size: .85rem; }
+.side-link + .side-link { margin-top: .75rem; }
+.file-link { text-decoration: none; }
+.file-link:hover code { text-decoration: underline; }
+.edit-link { margin-top: 3rem; font-size: .85rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 #theme { display: block; margin-top: 1.25rem; }
 .reading { --content-width: 46rem; min-width: 0; padding: 0 clamp(1.5rem, 5vw, 6rem); }
 [data-progress] {

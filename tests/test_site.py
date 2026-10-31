@@ -389,6 +389,26 @@ class TestSite(unittest.TestCase):
         self.assertNotIn(str(self.root.resolve()), html)
         self.assertNotIn("Work in ", html)
 
+    def test_real_course_links_back_to_github_and_shares_well(self) -> None:
+        """Pages link to their GitHub source, carry preview metadata, and a 404 exists."""
+        root = Path(__file__).resolve().parents[1]
+        Site(root, self.output).build()
+        chapter = (self.output / "01-rows-and-tables.html").read_text(encoding="utf-8")
+        repo = "https://github.com/h0rv/grugdb"
+        self.assertIn(f'href="{repo}">Source on GitHub', chapter)
+        self.assertIn(f"{repo}/blob/main/chapters/01-rows-and-tables.md", chapter)
+        self.assertIn(f'class="file-link" href="{repo}/blob/main/src/grugdb/table.py"', chapter)
+        self.assertIn(
+            '<link rel="canonical" href="https://grugdb.horv.co/01-rows-and-tables.html">', chapter
+        )
+        self.assertIn('<meta property="og:title"', chapter)
+        self.assertIn('<meta name="description" content="A row is one record', chapter)
+        home = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<link rel="canonical" href="https://grugdb.horv.co/">', home)
+        missing = (self.output / "404.html").read_text(encoding="utf-8")
+        self.assertIn('<base href="/">', missing)
+        self.assertIn("Page not found", missing)
+
     def test_real_course_has_valid_local_links_and_anchors(self) -> None:
         root = Path(__file__).resolve().parents[1]
         Site(root, self.output).build()

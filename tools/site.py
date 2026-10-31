@@ -39,6 +39,17 @@ from grugdb import (
 
 type APISymbol = type | Callable[..., object] | NewType
 
+SITE_URL = "https://grugdb.horv.co"
+REPO_URL = "https://github.com/h0rv/grugdb"
+DESCRIPTION = (
+    "Build a relational database in pure, typed Python: an iterator query engine, joins, "
+    "indexes, a B+ tree, a planner, transactions, and a write-ahead log."
+)
+FAVICON = (
+    "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
+    "<text y='.9em' font-size='90'>🪨</text></svg>"
+)
+
 
 @dataclass(frozen=True, slots=True)
 class Page:
@@ -63,6 +74,16 @@ class Page:
     @property
     def filename(self) -> str:
         return f"{self.slug}.html"
+
+    @property
+    def summary(self) -> str:
+        """The first paragraph of prose, as plain text, for link previews."""
+        for block in re.split(r"\n\s*\n", self.markdown):
+            text = block.strip()
+            if text and not text.startswith(("#", "```", "-", "|", ">", "<")):
+                text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+                return re.sub(r"\s+", " ", text.replace("`", "")).strip()
+        return DESCRIPTION
 
 
 @dataclass(frozen=True, slots=True)
@@ -439,8 +460,20 @@ class Site:
                     code = annotate_names(code, self.terms)
                 token.type = "html_inline"
                 token.content = f'<code class="inline-code">{code}</code>'
+                if is_path and not linked and (href := self.github_link(path)):
+                    token.content = f'<a class="file-link" href="{href}">{token.content}</a>'
             if token.children:
                 self.prepare(token.children, page, linked=linked)
+
+    def github_link(self, path: str) -> str | None:
+        """Link a repository path to GitHub, if that file or folder exists."""
+        target = (self.root / path.rstrip("/")).resolve()
+        if not path or path.startswith(("/", "~", "..")) or not target.exists():
+            return None
+        if not target.is_relative_to(self.root):
+            return None
+        kind = "tree" if target.is_dir() else "blob"
+        return f"{REPO_URL}/{kind}/main/{target.relative_to(self.root).as_posix()}"
 
     def render(self, page: Page) -> str:
         tokens = self.markdown.parse(page.markdown)
@@ -483,6 +516,7 @@ class Site:
             + "".join(links)
             + "</nav></details>"
             + reference_link
+            + f'<a class="side-link" href="{REPO_URL}">Source on GitHub</a>'
             + '<button id="theme" type="button" hidden>Theme</button>'
         )
 
@@ -504,7 +538,23 @@ class Site:
             )
         return f'<footer class="page-links">{links}</footer>'
 
-    def document(self, title: str, body: str, current: str, footer: str = "") -> str:
+    def edit_link(self, page: Page) -> str:
+        if not page.source.exists() or not page.source.is_relative_to(self.root):
+            return ""
+        href = f"{REPO_URL}/blob/main/{page.source.relative_to(self.root).as_posix()}"
+        return f'<p class="edit-link"><a href="{href}">Edit this page on GitHub</a></p>'
+
+    def document(
+        self,
+        title: str,
+        body: str,
+        current: str,
+        footer: str = "",
+        *,
+        description: str = DESCRIPTION,
+        filename: str = "index.html",
+        base: str = "",
+    ) -> str:
         previews = []
         docs = MarkdownIt("commonmark", {"html": False, "highlight": highlight_block})
         for name, term in self.terms.items():
@@ -516,6 +566,7 @@ class Site:
                     f'<section data-view="source">{source}</section>'
                     f'<section data-view="docs">{documentation}</section></template>'
                 )
+        canonical = f"{SITE_URL}/" if filename == "index.html" else f"{SITE_URL}/{filename}"
         return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -523,6 +574,15 @@ class Site:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>{escape(title)} · grugdb</title>
+{base}<meta name="description" content="{escape(description)}">
+<link rel="canonical" href="{canonical}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="grugdb">
+<meta property="og:title" content="{escape(title)} · grugdb">
+<meta property="og:description" content="{escape(description)}">
+<meta property="og:url" content="{canonical}">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="{escape(FAVICON)}">
 <link rel="stylesheet" href="style.css">
 <script src="theme.js"></script>
 </head>
@@ -543,16 +603,30 @@ class Site:
         self.output.mkdir(parents=True, exist_ok=True)
         for page in self.pages:
             document = self.document(
-                page.title, self.render(page), page.slug, self.page_links(page)
+                page.title,
+                self.render(page) + self.edit_link(page),
+                page.slug,
+                self.page_links(page),
+                description=page.summary,
+                filename=page.filename,
             )
             (self.output / page.filename).write_text(document, encoding="utf-8")
+        missing = self.document(
+            "Page not found",
+            "<h1>Page not found</h1><p>That page does not exist. "
+            'Start from the <a href="index.html">introduction</a>.</p>',
+            "404",
+            filename="404.html",
+            base='<base href="/">\n',
+        )
+        (self.output / "404.html").write_text(missing, encoding="utf-8")
         assets = Path(__file__).with_name("site")
         (self.output / "style.css").write_text(
             site_theme() + "\n" + (assets / "style.css").read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         shutil.copyfile(assets / "theme.js", self.output / "theme.js")
-        expected = {page.filename for page in self.pages}
+        expected = {page.filename for page in self.pages} | {"404.html"}
         for old_page in self.output.glob("*.html"):
             if old_page.name not in expected:
                 old_page.unlink()

@@ -19,7 +19,22 @@ Queries are Python expressions. `User.age >= 18` builds an object that the
 planner can read and the type checker can check. The engine runs the query
 itself, on the row objects you inserted.
 
-Start with the [introduction](chapters/00-intro.md). It covers setup.
+Read the course at [grugdb.horv.co](https://grugdb.horv.co), or read the
+chapters here on GitHub, starting with the [introduction](chapters/00-intro.md).
+
+## Get started
+
+You need Python 3.14 or newer and [uv](https://docs.astral.sh/uv/).
+
+```sh
+git clone https://github.com/h0rv/grugdb
+cd grugdb
+uv tool install poethepoet
+poe start     # create a "work" branch with the exercises blanked out
+poe test      # the failing tests are your task list
+```
+
+The [introduction](chapters/00-intro.md#set-up) explains the workflow.
 
 ## The course
 

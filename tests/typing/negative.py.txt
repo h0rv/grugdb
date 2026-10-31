@@ -1,0 +1,84 @@
+from datetime import date, datetime
+from decimal import Decimal
+
+from grugdb import Database, Sum
+from tests.typing.models import (
+    Place,
+    Coordinates,
+    OrderId,
+    OtherPriority,
+    OtherRole,
+    OtherStatus,
+    Priority,
+    RequiredAliases,
+    Role,
+    Status,
+    User,
+    UserId,
+)
+
+
+def negative(database: Database) -> None:
+    rows = database.table(User)
+    rows.get(1)  # error
+    rows.update(1, nickname=None)  # error
+    rows.delete(1)  # error
+    rows.get(UserId(1))  # error
+    User(email=123)  # error
+    User()  # error
+    User("ann@example.com")  # error
+    User(email="x", unknown=True)  # error
+    User(email="x", backup_email=7)  # error
+    User(email="x", nickname=7)  # error
+    User(email="x", label=7)  # error
+    User(email="x", user_id=7)  # error
+    User(email="x", user_id=OrderId(7))  # error
+    User(email="x", role="admin")  # error
+    User(email="x", role=OtherRole.ADMIN)  # error
+    User(email="x", status="active")  # error
+    User(email="x", status=OtherStatus.ACTIVE)  # error
+    User(email="x", priority=1)  # error
+    User(email="x", priority=OtherPriority.LOW)  # error
+    User(email="x", born="2000-01-02")  # error
+    User(email="x", seen=date(2026, 1, 2))  # error
+    User(email="x", balance=1.25)  # error
+    User(email="x", payload="hello")  # error
+    User(email="x", pair=(1, "two"))  # error
+    User(email="x", pair=(1, 2, 3))  # error
+    User(email="x", tagged=(1, 2))  # error
+    User(email="x", scores=(1, "two"))  # error
+    User(email="x", tags=frozenset({1}))  # error
+    User(email="x", reference=Decimal("1"))  # error
+    User(email="x", enabled=1)  # error
+    User(email="x", version=True)  # error
+    User(email="x", administrator=Role.READER)  # error
+    User(email="x", state="missing")  # error
+    User(email="x", place="Philadelphia")  # error
+    User(email="x", coordinates=Place(city="Philadelphia", postal_code=19103))  # error
+    User(email="x", history=("Philadelphia",))  # error
+    Coordinates(latitude="40", longitude=Decimal("-75"))  # error
+    RequiredAliases(email=1, alternative=None, pair=("a", "b"), label="home")  # error
+    RequiredAliases(email="x", alternative=1, pair=("a", "b"), label="home")  # error
+    RequiredAliases(email="x", alternative=None, pair=(1, 2), label="home")  # error
+    RequiredAliases(email="x", alternative=None, pair=("a", "b"), label=1)  # error
+    user = User(email="x")
+    user.email = "y"  # error
+    user.role = Role.READER  # error
+    user.email.get("x")  # error
+    users = database.table(User)
+    users.lookup(User.email, 123)  # error
+    users.lookup(User.email, None)  # error
+    users.lookup(User.user_id, 7)  # error
+    users.lookup(User.user_id, OrderId(7))  # error
+    users.lookup(User.status, Status.ACTIVE)  # error
+    users.lookup(User.priority, Priority.LOW)  # error
+    users.lookup(User.seen, datetime(2026, 1, 2))  # error
+    users.lookup(User.missing, UserId(7))  # error
+    query = users.scan()
+    query.where(User.email == 3)  # error
+    query.where(Place.city == "x")  # error
+    query.where(User.age >= 18)  # error
+    query.select(Place.city)  # error
+    query.order_by(Place.city)  # error
+    query.join(database.table(Place).scan(), Place.city == User.email)  # error
+    Sum(User.label)  # error

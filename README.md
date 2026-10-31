@@ -1,0 +1,44 @@
+# grugdb
+
+Build a relational database in pure, typed Python. You start with tables and an
+iterator query engine. Then you add joins, hash and B+ tree indexes, a query
+planner, transactions, snapshots, and a write-ahead log. Parts 1 and 2 take
+about a weekend. Part 3 covers durability and concurrency and takes longer.
+
+```python
+class User(Row):
+    id: Column[int]
+    name: Column[str]
+    age: Column[int | None] = column(default=None)
+
+
+users.scan().where(User.age >= 18).select(User.name).all()  # ['ann']
+```
+
+Queries are Python expressions. `User.age >= 18` builds an object that the
+planner can read and the type checker can check. The engine runs the query
+itself, on the row objects you inserted.
+
+Start with the [introduction](chapters/00-intro.md). It covers setup.
+
+## The course
+
+| Part              | Chapter                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| 1. A query engine | [1. Rows and tables](chapters/01-rows-and-tables.md)            |
+|                   | [2. Filtering and projection](chapters/02-filter-and-select.md) |
+|                   | [3. Joins](chapters/03-joins.md)                                |
+|                   | [4. Sort, limit, and grouping](chapters/04-sort-limit-group.md) |
+| 2. Make it fast   | [5. Profiling](chapters/05-profiling.md)                        |
+|                   | [6. Indexes and unique keys](chapters/06-indexes.md)            |
+|                   | [7. Build a B+ tree](chapters/07-bplus-tree.md)                 |
+|                   | [8. Query planning](chapters/08-planning.md)                    |
+| 3. Make it safe   | [9. Transactions](chapters/09-transactions.md)                  |
+|                   | [10. Snapshots](chapters/10-snapshots.md)                       |
+|                   | [11. The write-ahead log](chapters/11-write-ahead-log.md)       |
+|                   | [12. Concurrency](chapters/12-concurrency.md)                   |
+| Appendix          | [13. Schema changes](chapters/13-schema-changes.md)             |
+|                   | [14. Corruption and resource limits](chapters/14-corruption.md) |
+
+grugdb is a teaching engine. It is not a replacement for SQLite, and the
+[profiling chapter](chapters/05-profiling.md) measures how far apart they are.

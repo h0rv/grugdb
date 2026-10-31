@@ -1,0 +1,63 @@
+[project]
+name = "grugdb"
+version = "0.1.0"
+description = "A database where the schema is a Python class"
+requires-python = ">=3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fastpylight>=0.1.19",
+    "markdown-it-py>=4.2.0",
+    "mdformat>=1.0.0",
+    "mdformat-frontmatter>=2.2.0",
+    "mdformat-gfm>=1.0.0",
+    "ruff",
+    "ty",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ANN", "C4", "PERF"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/grugdb/query.py" = ["ANN401"]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+unsound-assignment = "error"
+unsound-return-statement = "error"
+
+[tool.poe]
+executor.type = "uv"
+
+[tool.poe.tasks]
+all = { sequence = ["lint", "types", "format-check", "test", "api", "build"], help = "Run checks and the site build" }
+lint = "ruff check ."
+types = "ty check"
+test = "python -m unittest"
+api = [
+    { cmd = "python -m tests.model_checks" },
+    { cmd = "python -m tests.typing.check_types" },
+]
+start = { cmd = "python -m tools.course", help = "Start the exercises on the work branch" }
+build = { cmd = "python tools/site.py", help = "Build the offline course website" }
+site = { cmd = "python tools/site.py --serve --open", help = "Build the course website and open it" }
+bench = { cmd = "python bench/run.py", help = "Run the optional query benchmarks" }
+format = [
+    { cmd = "ruff format ." },
+    { cmd = "mdformat --wrap 80 README.md AGENTS.md chapters .agents/skills" },
+]
+format-check = [
+    { cmd = "ruff format --check ." },
+    { cmd = "mdformat --check --wrap 80 README.md AGENTS.md chapters .agents/skills" },
+]

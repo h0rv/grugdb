@@ -27,6 +27,11 @@ export function saveEdit(edits, manifest, path, text) {
   else edits[path] = text;
 }
 
+function sourceKey(record, revision) {
+  const files = Object.entries(record?.files ?? {}).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  return JSON.stringify([record?.revision ?? revision, files]);
+}
+
 export async function openStorage() {
   const db = await new Promise((resolve, reject) => {
     const request = indexedDB.open("grugdb-workspace-v1", 1);
@@ -41,11 +46,12 @@ export async function openStorage() {
     request.onsuccess = () => resolve(request.result ?? null);
     request.onerror = () => reject(request.error);
   });
-  let sequence = record?.sequence ?? 0;
+  let baselineSource = record ? sourceKey(record) : null;
   db.onversionchange = () => db.close();
   return {
     record,
     write(value) {
+      const nextSource = sourceKey(value);
       return new Promise((resolve, reject) => {
         const tx = db.transaction("workspace", "readwrite");
         const store = tx.objectStore("workspace");
@@ -54,9 +60,11 @@ export async function openStorage() {
         let nextSequence;
         request.onsuccess = () => {
           const current = request.result;
-          const sameCode = current?.revision === value.revision &&
-            JSON.stringify(current.files) === JSON.stringify(value.files);
-          if ((current?.sequence ?? 0) !== sequence && !sameCode) {
+          const currentSource = sourceKey(current, value.revision);
+          const expectedSource = baselineSource ?? sourceKey(null, value.revision);
+          // Result-only saves do not invalidate the source this tab read.
+          // A changed source must still conflict unless the new source agrees.
+          if (currentSource !== expectedSource && currentSource !== nextSource) {
             conflict = true;
             tx.abort();
           } else {
@@ -64,7 +72,7 @@ export async function openStorage() {
             store.put({...value, sequence: nextSequence}, "work");
           }
         };
-        tx.oncomplete = () => { sequence = nextSequence; resolve(); };
+        tx.oncomplete = () => { baselineSource = nextSource; resolve(); };
         tx.onabort = () => reject(conflict
           ? new Error("Another tab saved changes. Export your work before reloading this tab.")
           : tx.error ?? new Error("Autosave failed. Export a backup of your work."));

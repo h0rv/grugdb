@@ -252,6 +252,46 @@ test("all chapter editors render and imported implementations pass the same brow
   } finally { await context.close(); }
 });
 
+test("result-only writes cannot block a source edit or overwrite another tab's source", async () => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    // Load an asset document so application autosaves cannot affect this schedule.
+    await page.goto(`${origin}/workspace-state.js`);
+    const outcome = await page.evaluate(async () => {
+      const {openStorage} = await import("/workspace-state.js");
+      const first = await openStorage(), second = await openStorage();
+      const initial = {version: 1, revision: "course", files: {}, results: {}};
+      await first.write(initial);
+      await second.write({...initial, results: {test: {status: "failed"}}});
+      const edited = {...initial, files: {"src/grugdb/table.py": "first draft"}};
+      await first.write(edited);
+      let staleResultsRejected = false;
+      try { await second.write(initial); } catch { staleResultsRejected = true; }
+      // Identical source can be acknowledged by a stale tab without conflict.
+      await second.write(edited);
+      await first.write({...edited, results: {test: {status: "passed"}}});
+      await second.write({...edited, files: {"src/grugdb/table.py": "second draft"}});
+      let staleEditRejected = false;
+      try { await first.write({...edited, files: {"src/grugdb/table.py": "stale draft"}}); } catch { staleEditRejected = true; }
+      const third = await openStorage(), fourth = await openStorage();
+      const updated = {...third.record, revision: "new course"};
+      await third.write(updated);
+      let staleRevisionRejected = false;
+      try { await fourth.write(fourth.record); } catch { staleRevisionRejected = true; }
+      await fourth.write(updated);
+      // Map insertion order must not turn an identical source into a conflict.
+      const twoFiles = {...updated, files: {"src/grugdb/table.py": "second draft", "src/grugdb/query.py": "query draft"}};
+      await fourth.write(twoFiles);
+      await third.write({...twoFiles, files: Object.fromEntries(Object.entries(twoFiles.files).reverse())});
+      await fourth.write({...twoFiles, files: {...twoFiles.files, "src/grugdb/table.py": "final draft"}});
+      return {staleResultsRejected, staleEditRejected, staleRevisionRejected, files: (await openStorage()).record.files};
+    });
+    assert.deepEqual(outcome, {staleResultsRejected: true, staleEditRejected: true, staleRevisionRejected: true,
+      files: {"src/grugdb/table.py": "final draft", "src/grugdb/query.py": "query draft"}});
+  } finally { await context.close(); }
+});
+
 test("concurrent tabs can save results but never overwrite another tab's source edits", {timeout: 120000}, async () => {
   const context = await browser.newContext();
   const first = await open(context);

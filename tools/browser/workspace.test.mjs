@@ -372,13 +372,20 @@ test("focused editor has readable regular-weight tokens and unclipped three-digi
 });
 
 test("mobile methods fit the viewport and backups round-trip large drafts without allowing supplied test edits", {timeout: 120000}, async () => {
-  const context = await browser.newContext({viewport: {width: 390, height: 844}});
+  const context = await browser.newContext({viewport: {width: 390, height: 844}, hasTouch: true, isMobile: true});
+  await context.addInitScript(() => localStorage.setItem("grugdb-vim", "true"));
   const page = await open(context);
   try {
     assert.equal(await page.locator(".shell > aside").isVisible(), false);
     await page.screenshot({path: "/tmp/grugdb-mobile-lesson.png"});
     await page.getByRole("button", {name: "Show sidebar", exact: true}).click();
     assert.equal(await page.locator(".shell > aside").isVisible(), true);
+    await page.getByRole("button", {name: "Editor settings", exact: true}).click();
+    assert.equal(await page.locator('.editor-keys input[value="standard"]').isChecked(), true);
+    assert.equal(await page.locator('.editor-keys input[value="vim"]').isDisabled(), true);
+    assert.equal(await page.evaluate(() => localStorage.getItem("grugdb-vim")), "true");
+    await page.screenshot({path: "/tmp/grugdb-mobile-settings.png"});
+    await page.getByRole("button", {name: "Close settings", exact: true}).click();
     await page.getByRole("button", {name: "Close chapters", exact: true}).click();
     assert.equal(await page.locator(".shell > aside").isVisible(), false);
     await card(page, "Table.insert").scrollIntoViewIfNeeded();

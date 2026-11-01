@@ -5,7 +5,7 @@ import { HighlightStyle, LanguageSupport, indentOnInput, indentUnit, syntaxHighl
 import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { styleTags, tags } from "@lezer/highlight";
 import { python, pythonLanguage } from "@codemirror/lang-python";
-import { autocompletion, closeCompletion, startCompletion } from "@codemirror/autocomplete";
+import { autocompletion, closeBrackets, closeBracketsKeymap, closeCompletion, startCompletion } from "@codemirror/autocomplete";
 import { lintGutter, setDiagnostics as diagnosticsEffect } from "@codemirror/lint";
 import { vim as vimBindings } from "@replit/codemirror-vim";
 import { strToU8, zipSync } from "fflate";
@@ -67,6 +67,8 @@ const inlineTheme = EditorView.theme({
   ".cm-scroller": { overflow: "visible" },
 });
 
+export const supportsVim = () => !matchMedia("(pointer: coarse) and (hover: none)").matches;
+
 export function createEditor({ parent, doc = "", onChange = () => {}, onRun = () => {}, onFocus = () => {}, vim = false, dark = false, inline = false, readOnly = false }) {
   const mode = new Compartment();
   const theme = new Compartment();
@@ -95,15 +97,19 @@ export function createEditor({ parent, doc = "", onChange = () => {}, onRun = ()
         },
         blur(_event, view) { view.setTabFocusMode(false); },
       }),
-      mode.of(vim ? vimBindings() : []),
+      mode.of(vim && supportsVim() ? vimBindings() : []),
       lineNumbers(), history(), drawSelection(), highlightActiveLine(), EditorView.lineWrapping,
-      pythonSupport, autocompletion(), indentUnit.of("    "), indentOnInput(),
+      pythonSupport, autocompletion(), closeBrackets(), indentUnit.of("    "), indentOnInput(),
       syntaxHighlighting(courseHighlight), search(),
-      keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+      keymap.of([...closeBracketsKeymap, indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       lintGutter(), courseTheme, inline ? inlineTheme : [], theme.of(colorMode(dark)),
       access.of(readOnlyExtensions()),
       EditorView.contentAttributes.of({
         "tabindex": "0",
+        "autocapitalize": "off",
+        "autocorrect": "off",
+        "autocomplete": "off",
+        "spellcheck": "false",
         "aria-label": "Python source editor",
         "aria-description": "Press Control or Command Enter to run. Press Escape then Tab to leave the editor.",
       }),
@@ -131,8 +137,8 @@ export function createEditor({ parent, doc = "", onChange = () => {}, onRun = ()
     focus: (line) => line === undefined ? view.focus() : revealLine(line),
     revealLine,
     setVim(enabled) {
-      vim = enabled;
-      view.dispatch({ effects: mode.reconfigure(enabled ? vimBindings() : []) });
+      vim = enabled && supportsVim();
+      view.dispatch({ effects: mode.reconfigure(vim ? vimBindings() : []) });
     },
     setDark(enabled) {
       dark = enabled;

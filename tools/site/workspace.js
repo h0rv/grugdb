@@ -38,14 +38,15 @@ async function start() {
   const response = await fetch(new URL("workspace.json", import.meta.url), {cache: "no-store"});
   if (!response.ok) throw new Error("Could not load the exercise files.");
   const manifest = await response.json();
-  const {createEditor, zipFiles, findMethod, applyMethodEdit, normalizeSavedImports} = await import(assetURL("./vendor/editor.js"));
+  const {createEditor, supportsVim, zipFiles, findMethod, applyMethodEdit, normalizeSavedImports} = await import(assetURL("./vendor/editor.js"));
   await document.fonts.load('14px "JetBrains Mono"').catch(() => {});
   const lesson = manifest.lessons.find(item => item.slug === toolbar.dataset.lesson) ?? manifest.lessons[0];
   const exercises = manifest.exercises.filter(item => item.lesson === toolbar.dataset.lesson);
   let edits = {}, results = {}, sourceVersion = 0, storage = null, warning = "";
   let saveQueue = Promise.resolve(), pendingSaves = 0, courseChanged = false;
+  const vimAvailable = supportsVim();
   let vim = false;
-  try { vim = localStorage.getItem("grugdb-vim") === "true"; } catch {}
+  try { vim = vimAvailable && localStorage.getItem("grugdb-vim") === "true"; } catch {}
   try {
     storage = await openStorage();
     if (storage.record) {
@@ -116,6 +117,7 @@ async function start() {
     const wrap = el("label", "", keyControls);
     const input = el("input", "", wrap);
     input.type = "radio"; input.name = "editor-keys"; input.value = value ? "vim" : "standard"; input.checked = vim === value;
+    input.disabled = value && !vimAvailable;
     el("span", label, wrap);
     input.addEventListener("change", () => {
       vim = value;
@@ -124,6 +126,7 @@ async function start() {
       try { localStorage.setItem("grugdb-vim", String(vim)); } catch {}
     });
   }
+  if (!vimAvailable) el("p", "Touch devices use standard keys. Your desktop preference is unchanged.", settings);
   const saved = el("span", Object.keys(edits).length ? "Saved" : "Autosave on", settings, "save-status");
   saved.hidden = true;
   const checksStatus = el("p", "Starting checks…", null, "checks-status");

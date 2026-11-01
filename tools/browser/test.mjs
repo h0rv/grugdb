@@ -68,6 +68,38 @@ async function checker(page, files, id = 1) {
   }), { files, id });
 }
 
+test("touch editors keep standard bindings and disable text correction", async () => {
+  const context = await browser.newContext({viewport: {width: 390, height: 844}, hasTouch: true, isMobile: true});
+  const page = await context.newPage();
+  try {
+    await page.goto(origin);
+    await page.evaluate(async () => {
+      const {createEditor, supportsVim} = await import("/editor.js");
+      window.vimAvailable = supportsVim();
+      window.editor = createEditor({parent: document.querySelector("#editor"), vim: true});
+      editor.focus();
+    });
+    assert.equal(await page.evaluate(() => vimAvailable), false);
+    for (const text of ["hello", "world"]) {
+      await page.evaluate(() => { editor.setVim(true); editor.setValue(""); editor.focus(); });
+      await page.keyboard.type(text);
+      assert.equal(await page.evaluate(() => editor.getValue()), text);
+    }
+    await page.evaluate(() => { editor.setValue(""); editor.focus(); });
+    await page.keyboard.type("(");
+    assert.equal(await page.evaluate(() => editor.getValue()), "()");
+    await page.keyboard.press("Backspace");
+    assert.equal(await page.evaluate(() => editor.getValue()), "");
+    await page.keyboard.type('"');
+    assert.equal(await page.evaluate(() => editor.getValue()), '""');
+    await page.keyboard.type('name"');
+    assert.equal(await page.evaluate(() => editor.getValue()), '"name"');
+    for (const [attribute, expected] of [["autocapitalize", "off"], ["autocorrect", "off"], ["autocomplete", "off"], ["spellcheck", "false"]]) {
+      assert.equal(await page.locator(".cm-content").getAttribute(attribute), expected);
+    }
+  } finally { await context.close(); }
+});
+
 test("editor edits, silent replacement, indent, escape, run, Vim, themes and diagnostics", async () => {
   const page = await editorPage();
   const errors = [];

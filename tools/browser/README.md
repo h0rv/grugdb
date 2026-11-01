@@ -9,8 +9,11 @@ returns to the lesson. Import backup and Export backup sit below the file tree.
 Both views edit the same files.
 
 CodeMirror editors use standard keys by default. Learners can change the key
-bindings in Settings in the sidebar. Help contains shortcuts and local commands.
-Lesson blocks marked `local-only` appear in Help rather than in the lesson.
+bindings in Settings in the sidebar. Touch devices always use standard keys,
+without changing the saved desktop preference. Code fields disable text
+correction and automatically pair quotes and brackets. Help contains shortcuts
+and local commands. Lesson blocks marked `local-only` appear in Help rather than
+in the lesson.
 
 The website runs learner Python with Pyodide in a fresh Web Worker for each test
 run. Ty and Ruff check edits automatically in a separate worker. All runtime

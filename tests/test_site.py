@@ -17,6 +17,7 @@ class Document(HTMLParser):
         self.ids: list[str] = []
         self.anchors: list[dict[str, str | None]] = []
         self.tasks: list[dict[str, str | None]] = []
+        self.text: list[str] = []
         self.anchor_depth = 0
         self.nested_anchors = False
 
@@ -35,6 +36,9 @@ class Document(HTMLParser):
                     self.links.append(value)
                 if tag == "link" and name == "href":
                     self.links.append(value)
+
+    def handle_data(self, data: str) -> None:
+        self.text.append(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "a":
@@ -271,7 +275,7 @@ class TestSite(unittest.TestCase):
         self.assertEqual(self.site.terms["RowId"].source, 'RowId = NewType("RowId", int)')
         self.site.build()
         self.assertTrue((self.output / "reference.html").is_file())
-        self.assertIn('href="reference.html">API reference', self.site.navigation("index"))
+        self.assertIn('aria-label="API reference"', self.site.navigation("index"))
 
     def test_preview_escapes_docstrings_and_highlights_each_view_once(self) -> None:
         summary = 'A Column with <tags> & "quotes".'
@@ -302,7 +306,7 @@ class TestSite(unittest.TestCase):
             ["reference.html#reference-column", "reference.html#reference-column-2"],
         )
 
-    def test_task_keys_are_rendered_for_each_checklist_item(self) -> None:
+    def test_checklists_render_as_requirements_not_self_reported_progress(self) -> None:
         page = Page(
             self.root / "tasks.md",
             "tasks",
@@ -311,9 +315,12 @@ class TestSite(unittest.TestCase):
         )
         standalone = Document()
         standalone.feed(self.site.render(page))
-        self.assertEqual(len(standalone.tasks), 2)
-        self.assertNotIn("checked", standalone.tasks[0])
-        self.assertIn("checked", standalone.tasks[1])
+        self.assertEqual(standalone.tasks, [])
+        rendered = self.site.render(page)
+        self.assertIn("Implement", rendered)
+        self.assertIn("Write a test.", rendered)
+        self.assertNotIn("[ ]", rendered)
+        self.assertNotIn("[x]", rendered)
         reordered = Document()
         reordered.feed(
             self.site.render(
@@ -351,7 +358,9 @@ class TestSite(unittest.TestCase):
         site.build()
         code = (self.output / "test-example.html").read_text(encoding="utf-8")
         self.assertIn("A stored value is returned unchanged.", code)
-        self.assertIn("tests.test_example.TestExample.test_value", code)
+        source_document = Document()
+        source_document.feed(code)
+        self.assertIn("tests.test_example.TestExample.test_value", "".join(source_document.text))
         with self.assertRaisesRegex(ValueError, "Unknown test"):
             site.link("../tests/test_example.py#TestExample.test_missing", page)
 
@@ -395,9 +404,12 @@ class TestSite(unittest.TestCase):
         Site(root, self.output).build()
         chapter = (self.output / "01-rows-and-tables.html").read_text(encoding="utf-8")
         repo = "https://github.com/h0rv/grugdb"
-        self.assertIn(f'href="{repo}">Source on GitHub', chapter)
+        self.assertIn('aria-label="Source on GitHub"', chapter)
+        self.assertIn(f'href="{repo}"', chapter)
         self.assertIn(f"{repo}/blob/main/chapters/01-rows-and-tables.md", chapter)
-        self.assertIn(f'class="file-link" href="{repo}/blob/main/src/grugdb/table.py"', chapter)
+        self.assertIn(
+            'class="file-link" href="#workspace" data-edit-file="src/grugdb/table.py"', chapter
+        )
         self.assertIn(
             '<link rel="canonical" href="https://grugdb.horv.co/01-rows-and-tables.html">', chapter
         )

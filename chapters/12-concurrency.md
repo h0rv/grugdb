@@ -3,7 +3,8 @@
 Chapter 9 allowed one transaction at a time, on one thread. This chapter drops
 the one-thread rule and lets a second thread use the database. A reader scans
 `accounts` and adds up the balances, while a writer moves 10 dollars from Ann to
-Bob.
+Bob. Use local CPython for this chapter. The browser workspace cannot run
+threading tests.
 
 Chapter 9's commit swaps in all of a transaction's changes at once, so this
 reader can never see the debit without the credit. The problem appears as soon
@@ -90,11 +91,17 @@ Done when:
 - An abandoned scan doesn't block later writers forever.
 - No table method can observe rows and indexes out of sync.
 
-Put the tests in `tests/test_concurrency.py`:
+Put the tests in `tests/test_concurrency.py`.
+
+<!-- local-only:start -->
+
+Run the concurrency tests from the repository root:
 
 ```sh
 python -m unittest tests.test_concurrency
 ```
+
+<!-- local-only:end -->
 
 Threading bugs often do not show up on a normal run. Use `threading.Event` or
 `threading.Barrier` to force the bad interleaving. Do not rely on `sleep` to

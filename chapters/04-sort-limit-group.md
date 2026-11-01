@@ -108,8 +108,13 @@ memory, not a million rows.
 
 ## Your turn
 
-Implement `Limit.__iter__`, `OrderBy.__iter__`, and `GroupBy.__iter__` in
-`src/grugdb/query.py`. For `GroupBy`, use each aggregate's `start` and `add`.
+`Limit` skips the offset and returns at most the requested number of rows.
+`OrderBy` sorts by the supplied keys and their directions. `GroupBy` uses each
+aggregate's `start` and `add` to compute totals for each key.
+
+When these methods work, every test in `tests/test_query.py` should pass. You
+will have a query engine with scans, filters, projections, two join algorithms,
+sorting, limits, and grouping.
 
 Done when:
 
@@ -121,12 +126,21 @@ Done when:
 - `group_by` yields `(key, *totals)` in first-seen key order, and empty input
   gives no groups.
 
+<!-- local-only:start -->
+
+When working locally, run the query tests from the repository root:
+
 ```sh
 python -m unittest tests.test_query
 ```
 
-Every test in the file should pass now. You have a query engine with scans,
-filters, projections, two join algorithms, sorting, limits, and grouping.
+<!-- local-only:end -->
+
+Implement these methods in `src/grugdb/query.py`:
+
+- `Limit.__iter__`
+- `OrderBy.__iter__`
+- `GroupBy.__iter__`
 
 ## Stretch goals
 

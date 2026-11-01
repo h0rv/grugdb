@@ -126,7 +126,42 @@ unsound-return-statement checks enabled; do not add a second checker.
 highlighting packages are development dependencies only. Keep assets local and
 support direct file viewing. Use browser printing for PDF export, including a
 full-course page. Do not introduce a frontend framework or duplicate chapter
-text.
+text. The browser workspace uses the same `EXERCISES` scaffolding and supplied
+tests. Never ship reference exercise bodies in its files or API previews.
+Progress comes from current test results, not learner checkboxes. Keep native
+performance, durable filesystem operations, subprocess crashes, and threading as
+local exercises.
+
+Make browser interactions the primary instructions for chapters 1 to 4. Learners
+edit each assigned method in the lesson. Autosave, tests, and Ty and Ruff checks
+run automatically. Ctrl+Enter (Command+Enter on macOS) reruns the current
+method's tests. Do not add repeated Run buttons. Open full file shows an
+optional right-side editor with Files, Full screen, and Close editor controls.
+Keep backup actions with its file tree. Both views share the same files. Keep
+assigned methods in bullet items that start with their exact code names, e.g.,
+`Table.insert`, so the site can place an editor after each item. Do not add
+exercise solutions.
+
+The browser has no shell. Never tell learners to run arbitrary shell commands
+there. Preserve local commands inside `<!-- local-only:start -->` and
+`<!-- local-only:end -->` blocks, including any prose needed to explain them.
+The site moves these instructions into Help, outside the lesson flow. Keep
+Python teaching examples outside these blocks. JSON backups contain edits; ZIP
+downloads contain the complete Python project. Browser autosave is not a
+separate backup and does not sync across devices.
+
+Browser build dependencies live in `tools/browser/`. `poe browser-assets` builds
+local CodeMirror, Pyodide, Ty, and Ruff assets. Node is a website build tool,
+not a database runtime dependency. Generated assets and learner browser state
+are not committed. See `tools/browser/README.md` for build and verification
+commands.
+
+Review UI changes in a separate preview directory with
+`python -m tools.site --output /tmp/grugdb-preview --serve`. Visually inspect
+desktop and phone-sized screenshots, including light and dark themes, before
+replacing the served site. Do not rebuild the site the user is viewing while
+iterating. Automated layout checks do not replace visual review. Keep the lesson
+as the default view.
 
 ## Verification
 

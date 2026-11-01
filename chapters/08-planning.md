@@ -81,11 +81,17 @@ Done when:
 - After the query runs, the result shows observed rows next to the estimated
   rows for every node, and `Scan` estimates match the table's length.
 
-Write these tests in `tests/test_plan.py`, then run:
+Write these tests in `tests/test_plan.py`.
+
+<!-- local-only:start -->
+
+When working locally, run the planner tests from the repository root:
 
 ```sh
 python -m unittest tests.test_plan
 ```
+
+<!-- local-only:end -->
 
 ## A planner with one rule
 

@@ -13,3 +13,6 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+/tools/browser/node_modules/
+/tools/browser/.cache/
+/tools/site/vendor/

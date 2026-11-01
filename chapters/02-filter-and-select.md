@@ -114,15 +114,13 @@ order the operator below produced them in.
 
 ## Your turn
 
-Implement three methods:
+`Compare.test` reads the field from the row with `self.field.read(row)` and
+applies the rule for `None` described above. `Where` keeps matching rows.
+`Select` yields plain values for one field and tuples for several fields. The
+`Query` methods that build these nodes, `where` and `select`, are supplied.
 
-- `Compare.test` in `src/grugdb/expr.py`. Read the field from the row with
-  `self.field.read(row)`, then apply the rule for `None` described above.
-- `Where.__iter__` in `src/grugdb/query.py`.
-- `Select.__iter__` in `src/grugdb/query.py`. One field yields plain values, and
-  several fields yield tuples.
-
-The `Query` methods that build these nodes, `where` and `select`, are supplied.
+The tests check laziness with a source that counts how many rows have been
+pulled from it. You can use the same method to check your own operators.
 
 Done when:
 
@@ -134,6 +132,10 @@ Done when:
 - Order and duplicates are preserved, and empty input gives empty output.
 - Running a query twice reads the table twice and leaves the query unchanged.
 
+<!-- local-only:start -->
+
+When working locally, run the query tests from the repository root:
+
 ```sh
 python -m unittest tests.test_query
 ```
@@ -141,8 +143,13 @@ python -m unittest tests.test_query
 The join, sort, and grouping tests in that file keep failing until you finish
 the next two chapters.
 
-The tests check laziness with a source that counts how many rows have been
-pulled from it. You can use the same method to check your own operators.
+<!-- local-only:end -->
+
+Implement these methods:
+
+- `Compare.test` in `src/grugdb/expr.py`.
+- `Where.__iter__` in `src/grugdb/query.py`.
+- `Select.__iter__` in `src/grugdb/query.py`.
 
 ## What the database can see
 

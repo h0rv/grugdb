@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ClassVar, Self, dataclass_transform, overload
 
-from .expr import Field, UniqueField
-from .schema import matches, validate_hint
+from grugdb.expr import Field, UniqueField
+from grugdb.schema import matches, validate_hint
 
 
 class Missing(Enum):

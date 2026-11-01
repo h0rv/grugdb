@@ -81,12 +81,11 @@ the hash join against.
 
 ## Your turn
 
-Open `src/grugdb/query.py` and implement `NestedLoopJoin.__iter__` and
-`HashJoin.__iter__`. Both receive the same `JoinOn`. Its `left` field reads rows
-from the left input, its `right` field reads rows from the right input, and
-`JoinOn.test(left_row, right_row)` checks one pair. Both joins must return the
-same pairs in the same order. Pairs follow left input order, and within each
-left row they follow right input order.
+`NestedLoopJoin` and `HashJoin` receive the same `JoinOn`. Its `left` field
+reads rows from the left input, its `right` field reads rows from the right
+input, and `JoinOn.test(left_row, right_row)` checks one pair. Both joins must
+return the same pairs in the same order. Pairs follow left input order, and
+within each left row they follow right input order.
 
 Done when:
 
@@ -98,13 +97,36 @@ Done when:
   keys, so this is one place where grugdb differs from SQL.
 - Fields from either side can be filtered and selected after the join.
 
+<!-- local-only:start -->
+
+When working locally, run the query tests from the repository root:
+
 ```sh
 python -m unittest tests.test_query
 ```
 
+<!-- local-only:end -->
+
+Implement these methods in `src/grugdb/query.py`:
+
+- `NestedLoopJoin.__iter__`
+- `HashJoin.__iter__`
+
 ## Measure it
 
-Run `poe bench` once both joins work. On our machine it printed this:
+Measure native performance with local CPython once both joins work. The browser
+runs Python through WebAssembly, so its timings are not comparable. On our
+machine, the benchmark printed this:
+
+<!-- local-only:start -->
+
+Run the benchmark from the repository root:
+
+```sh
+poe bench
+```
+
+<!-- local-only:end -->
 
 ```text
 join strategies, users x 3*users orders

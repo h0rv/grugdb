@@ -14,6 +14,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from inspect import getdoc, getmro, getsource
 from pathlib import Path
 from textwrap import dedent
+from types import FunctionType, MethodType
 from typing import NewType
 from urllib.parse import unquote, urlsplit
 
@@ -36,6 +37,7 @@ from grugdb import (
     Unique,
     column,
 )
+from tools.playground import learner_source, workspace
 
 type APISymbol = type | Callable[..., object] | NewType
 
@@ -116,6 +118,9 @@ def source_snippet(definition: APISymbol) -> str:
                 return "\n".join(module_source.splitlines()[node.lineno - 1 : node.end_lineno])
         raise ValueError(f"Missing type declaration: {definition.__name__}")
     source = dedent(getsource(definition))
+    if isinstance(definition, (type, FunctionType, MethodType)):
+        owner, _, member = definition.__qualname__.partition(".")
+        source = learner_source(source, owner, member or None)
     lines = source.splitlines()
     omitted: set[int] = set()
     for node in ast.walk(ast.parse(source)):
@@ -183,7 +188,7 @@ def reference_terms(page: Page) -> dict[str, Term]:
     in_source = False
 
     def finish(end: int) -> None:
-        if name and summary and example:
+        if name and summary:
             documentation = "\n".join(lines[documentation_start : documentation_end or end]).strip()
             terms[name] = Term(name, summary, example, href, documentation, source)
 
@@ -303,9 +308,9 @@ def test_reference(path: Path, root: Path) -> tuple[Page, dict[str, str]]:
                     description = ast.get_docstring(method) or name
                     descriptions[name] = " ".join(description.split("\n\n")[0].split())
                     code = "\n".join(source.splitlines()[method.lineno - 1 : method.end_lineno])
-                    command = f"uv run python -m unittest {relative[:-3].replace('/', '.')}.{name}"
+                    selector = f"{relative[:-3].replace('/', '.')}.{name}"
                     sections.append(
-                        f"## {name}\n\n{description}\n\n```sh\n{command}\n```\n\n"
+                        f"## {name}\n\n{description}\n\n`{selector}`\n\n"
                         f"```python\n{dedent(code)}\n```"
                     )
     return Page(
@@ -326,6 +331,23 @@ class Site:
     def __init__(self, root: Path, output: Path) -> None:
         self.root = root.resolve()
         self.output = output
+        assets = Path(__file__).with_name("site")
+        self.asset_version = sha256(
+            b"".join(
+                path.read_bytes()
+                for path in (
+                    assets / "style.css",
+                    assets / "theme.js",
+                    assets / "workspace.js",
+                    assets / "workspace-state.js",
+                    assets / "python-worker.js",
+                    assets / "vendor/editor.js",
+                    assets / "vendor/checks-worker.js",
+                )
+                if path.is_file()
+            )
+        ).hexdigest()[:12]
+        self.workspace = workspace(self.root)
         introduction = self.root / "chapters/00-intro.md"
         self.pages = (
             [Page.read(introduction, "index"), Page.read(self.root / "README.md", "project")]
@@ -348,7 +370,7 @@ class Site:
                 self.pages.append(Page.read(source, slug))
         self.test_descriptions: dict[tuple[Path, str], str] = {}
         for path in sorted((self.root / "tests").glob("test_*.py")):
-            if path.name in {"test_course.py", "test_site.py"}:
+            if path.name in {"test_course.py", "test_site.py", "test_playground.py"}:
                 continue
             test_page, descriptions = test_reference(path, self.root)
             self.pages.append(test_page)
@@ -424,19 +446,7 @@ class Site:
             elif token.type == "inline" and token.children:
                 marker = re.match(r"^\[([ xX])\] ", token.content)
                 if marker and token.children[0].type == "text":
-                    task = " ".join(token.content[marker.end() :].split())
-                    key = f"{page.slug}--{sha256(task.encode()).hexdigest()[:16]}"
-                    checked = " checked" if marker[1].lower() == "x" else ""
                     token.children[0].content = token.children[0].content[marker.end() :]
-                    opening = Token("html_inline", "", 0)
-                    opening.content = (
-                        f'<label class="task-item"><input type="checkbox"'
-                        f' data-task="{escape(key)}"{checked}><span>'
-                    )
-                    closing = Token("html_inline", "", 0)
-                    closing.content = "</span></label>"
-                    token.children.insert(0, opening)
-                    token.children.append(closing)
             elif token.type == "code_inline":
                 path = token.content.partition("::")[0]
                 is_path = bool(
@@ -460,8 +470,15 @@ class Site:
                     code = annotate_names(code, self.terms)
                 token.type = "html_inline"
                 token.content = f'<code class="inline-code">{code}</code>'
-                if is_path and not linked and (href := self.github_link(path)):
-                    token.content = f'<a class="file-link" href="{href}">{token.content}</a>'
+                if is_path and not linked:
+                    if self.workspace and path in self.workspace.editable and page in self.course:
+                        token.content = (
+                            '<a class="file-link" href="#workspace" '
+                            f'data-edit-file="{escape(path)}">'
+                            f"{token.content}</a>"
+                        )
+                    elif href := self.github_link(path):
+                        token.content = f'<a class="file-link" href="{href}">{token.content}</a>'
             if token.children:
                 self.prepare(token.children, page, linked=linked)
 
@@ -476,7 +493,55 @@ class Site:
         return f"{REPO_URL}/{kind}/main/{target.relative_to(self.root).as_posix()}"
 
     def render(self, page: Page) -> str:
-        tokens = self.markdown.parse(page.markdown)
+        tokens: list[Token] = []
+        for part in re.split(
+            r"(<!-- local-only:start -->.*?<!-- local-only:end -->)", page.markdown, flags=re.S
+        ):
+            if part.startswith("<!-- local-only:start -->"):
+                opening = Token("html_block", "", 0)
+                opening.content = '<details class="local-only"><summary>Work locally</summary>\n'
+                tokens.append(opening)
+                tokens.extend(
+                    self.markdown.parse(
+                        part.removeprefix("<!-- local-only:start -->").removesuffix(
+                            "<!-- local-only:end -->"
+                        )
+                    )
+                )
+                closing = Token("html_block", "", 0)
+                closing.content = "</details>\n"
+                tokens.append(closing)
+            else:
+                tokens.extend(self.markdown.parse(part))
+        if self.workspace:
+            assigned = {item.id for item in self.workspace.exercises if item.lesson == page.slug}
+            rendered: set[str] = set()
+            items: list[str | None] = []
+            expanded: list[Token] = []
+            for token in tokens:
+                if token.type == "list_item_open":
+                    items.append(None)
+                elif token.type == "inline" and items:
+                    match = re.match(r"^(?:\[[ xX]\] )?`([\w.]+)`", token.content)
+                    if match and match[1] in assigned and match[1] not in rendered:
+                        items[-1] = match[1]
+                        if token.content == f"`{match[1]}`":
+                            token.content = ""
+                            token.children = []
+                elif token.type == "list_item_close" and items:
+                    name = items.pop()
+                    if name and name not in rendered:
+                        card = Token("html_block", "", 0)
+                        card.content = (
+                            f'<section class="exercise" data-exercise="{escape(name)}">'
+                            "<p>Open the hosted course with JavaScript "
+                            "to edit this method here.</p>"
+                            "</section>\n"
+                        )
+                        expanded.append(card)
+                        rendered.add(name)
+                expanded.append(token)
+            tokens = expanded
         self.prepare(tokens, page)
         counts: dict[str, int] = {}
         for index, token in enumerate(tokens):
@@ -507,17 +572,54 @@ class Site:
                 f"<span>{escape(title)}</span></a>"
             )
         reference = self.by_source.get(self.root / "REFERENCE.md")
-        reference_link = (
-            '<a class="side-link" href="reference.html">API reference</a>' if reference else ""
-        )
         return (
-            '<a class="brand" href="index.html">grugdb<span>A database in Python</span></a>'
-            '<details class="contents" open><summary>Chapters</summary><nav aria-label="Chapters">'
+            '<header class="sidebar-heading"><a class="brand" href="index.html">'
+            "grugdb<span>A database in Python</span></a>"
+            '<button id="nav-toggle" type="button" aria-label="Hide sidebar" '
+            'aria-expanded="true"><svg viewBox="0 0 24 24" width="18" height="18" '
+            'fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">'
+            '<path d="m14 6-6 6 6 6"/></svg></button></header>'
+            + ('<div class="side-status"></div>' if self.workspace else "")
+            + '<details class="contents" open><summary>Chapters</summary>'
+            '<nav aria-label="Chapters">'
             + "".join(links)
             + "</nav></details>"
-            + reference_link
-            + f'<a class="side-link" href="{REPO_URL}">Source on GitHub</a>'
-            + '<button id="theme" type="button" hidden>Theme</button>'
+            + self.sidebar_tools(reference is not None)
+        )
+
+    def sidebar_tools(self, reference: bool) -> str:
+        resources = (
+            '<a href="reference.html" aria-label="API reference">API reference</a>'
+            if reference
+            else ""
+        )
+        resources += f'<a href="{REPO_URL}" aria-label="Source on GitHub">Source on GitHub ↗</a>'
+        tools = (
+            '<button id="theme" type="button" hidden>'
+            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '
+            'stroke="currentColor" stroke-width="1.7" aria-hidden="true">'
+            '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2'
+            'M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></button>'
+        )
+        if self.workspace:
+            resources += '<button id="open-workspace" type="button">Source files</button>'
+            tools += (
+                '<button id="workspace-settings" type="button" title="Editor settings" '
+                'aria-label="Editor settings"><svg viewBox="0 0 24 24" width="18" height="18" '
+                'fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">'
+                '<path d="M3 6h5m4 0h9M3 12h10m4 0h4M3 18h3m4 0h11"/>'
+                '<circle cx="10" cy="6" r="2"/><circle cx="15" cy="12" r="2"/>'
+                '<circle cx="8" cy="18" r="2"/></svg></button>'
+                '<button id="course-help" type="button" title="Help" aria-label="Help">'
+                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '
+                'stroke="currentColor" stroke-width="1.7" aria-hidden="true">'
+                '<circle cx="12" cy="12" r="9"/><path d="M12 16v-5m0-4v.1"/></svg></button>'
+            )
+        return (
+            '<footer class="sidebar-footer">'
+            f'<section class="sidebar-section"><h2>Resources</h2>{resources}</section>'
+            f'<div class="sidebar-tools" aria-label="Preferences and help">{tools}</div>'
+            "</footer>"
         )
 
     def page_links(self, page: Page) -> str:
@@ -583,11 +685,17 @@ class Site:
 <meta property="og:url" content="{canonical}">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="{escape(FAVICON)}">
-<link rel="stylesheet" href="style.css">
-<script src="theme.js"></script>
+<link rel="stylesheet" href="style.css?v={self.asset_version}">
+<script src="theme.js?v={self.asset_version}"></script>
+<script type="module" src="workspace.js?v={self.asset_version}"></script>
 </head>
 <body>
 <a class="skip-link" href="#content">Skip to content</a>
+<button id="nav-reopen" type="button" aria-label="Show sidebar">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+<path d="m10 6 6 6-6 6"/></svg><span>Chapters</span></button>
+<button id="nav-dismiss" type="button" aria-label="Close chapters"></button>
 {"".join(previews)}
 <div class="shell">
 <aside>{self.navigation(current)}</aside>
@@ -599,12 +707,20 @@ class Site:
 </html>
 """
 
+    def workspace_panel(self, page: Page) -> str:
+        if self.workspace is None:
+            return ""
+        return (
+            f'<div id="workspace" class="course-controller" '
+            f'data-course data-lesson="{page.slug}"></div>'
+        )
+
     def build(self) -> None:
         self.output.mkdir(parents=True, exist_ok=True)
         for page in self.pages:
             document = self.document(
                 page.title,
-                self.render(page) + self.edit_link(page),
+                self.workspace_panel(page) + self.render(page) + self.edit_link(page),
                 page.slug,
                 self.page_links(page),
                 description=page.summary,
@@ -625,7 +741,12 @@ class Site:
             site_theme() + "\n" + (assets / "style.css").read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-        shutil.copyfile(assets / "theme.js", self.output / "theme.js")
+        for name in ("theme.js", "workspace.js", "workspace-state.js", "python-worker.js"):
+            shutil.copyfile(assets / name, self.output / name)
+        if self.workspace:
+            (self.output / "workspace.json").write_text(self.workspace.json(), encoding="utf-8")
+        if self.workspace and (assets / "vendor").is_dir():
+            shutil.copytree(assets / "vendor", self.output / "vendor", dirs_exist_ok=True)
         expected = {page.filename for page in self.pages} | {"404.html"}
         for old_page in self.output.glob("*.html"):
             if old_page.name not in expected:
@@ -634,6 +755,7 @@ class Site:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the grugdb course website.")
+    parser.add_argument("--output", type=Path, help="build into a separate preview directory")
     parser.add_argument("--serve", action="store_true", help="serve locally after building")
     parser.add_argument("--open", action="store_true", help="open the browser with --serve")
     parser.add_argument("--port", type=int, default=8000)
@@ -643,7 +765,7 @@ def main() -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     root = Path(__file__).resolve().parents[1]
-    site = Site(root, root / "site")
+    site = Site(root, args.output.resolve() if args.output else root / "site")
     site.build()
     print(f"Built {(site.output / 'index.html').as_uri()}")
     if args.serve:

@@ -124,11 +124,17 @@ Done when:
 - A batch that leaves each row's unique key unchanged succeeds.
 - `users.lookup(User.email, ...)` returns the stored row or `None`.
 
-Write tests for these in `tests/test_index.py`, then run:
+Write tests for these in `tests/test_index.py`.
+
+<!-- local-only:start -->
+
+When working locally, run the index and table tests from the repository root:
 
 ```sh
 python -m unittest tests.test_index tests.test_table
 ```
+
+<!-- local-only:end -->
 
 ## Sorted indexes and ranges
 

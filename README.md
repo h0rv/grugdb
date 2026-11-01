@@ -24,7 +24,24 @@ chapters here on GitHub, starting with the [introduction](chapters/00-intro.md).
 
 ## Get started
 
-You need Python 3.14 or newer and [uv](https://docs.astral.sh/uv/).
+Open [chapter 1](https://grugdb.horv.co/01-rows-and-tables.html#your-turn) and
+edit each assigned method in the lesson. After you pause, edits autosave and
+lint, type checks, and relevant tests run automatically, along with the chapter
+tests. Editors use standard keys by default. You can change them in Settings in
+the sidebar. Expand the optional full workspace to read or edit whole source
+files. Open Help for shortcuts and local commands.
+
+Clearing browser data removes saved edits, and edits do not sync between
+devices. Download a JSON backup of your edits or a ZIP of the Python project. If
+saving fails, download a backup before leaving.
+
+Native profiling, disk durability, crash tests, and threading require local
+CPython. The browser has no shell.
+
+<!-- local-only:start -->
+
+For local work, you need Python 3.14 or newer and
+[uv](https://docs.astral.sh/uv/).
 
 ```sh
 git clone https://github.com/h0rv/grugdb
@@ -34,7 +51,9 @@ poe start     # create a "work" branch with the exercises blanked out
 poe test      # the failing tests are your task list
 ```
 
-The [introduction](chapters/00-intro.md#set-up) explains the workflow.
+The [introduction](chapters/00-intro.md#set-up-locally) explains the workflow.
+
+<!-- local-only:end -->
 
 ## The course
 

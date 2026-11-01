@@ -124,11 +124,17 @@ Done when:
   raises.
 - A rolled-back insert can never make a stale `RowId` point at a different row.
 
-Put your tests in `tests/test_transaction.py` and run:
+Put your tests in `tests/test_transaction.py`.
+
+<!-- local-only:start -->
+
+When working locally, run the transaction tests from the repository root:
 
 ```sh
 python -m unittest tests.test_transaction
 ```
+
+<!-- local-only:end -->
 
 Commits are now atomic, but they only exist in memory. When Python exits, every
 committed transaction is lost. The next chapter saves the database to disk.

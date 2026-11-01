@@ -1,5 +1,6 @@
 import unittest
 from collections.abc import Iterator
+from itertools import islice
 from typing import Any
 
 from grugdb import Column, Count, Database, Max, Min, Query, Row, Sum, column
@@ -140,7 +141,7 @@ class TestQuery(unittest.TestCase):
         source = Counting()
         query = source.where(N.n.in_(range(2, 100, 2))).select(N.n)
         self.assertEqual(source.pulled, 0)
-        self.assertEqual(query.limit(3).all(), [2, 4, 6])
+        self.assertEqual(list(islice(query, 3)), [2, 4, 6])
         self.assertEqual(source.pulled, 6)
 
     def test_queries_are_reusable_and_do_not_mutate_parents(self) -> None:

@@ -1,8 +1,9 @@
 # 5. Profiling
 
 Part 1 ended with a working query engine. Before you make it faster, measure
-where the time goes. The benchmark in `bench/run.py` uses a model with two
-fields:
+where the time goes. Use local CPython for the measurements in this chapter;
+browser Python timings are not native performance measurements. The benchmark in
+`bench/run.py` uses a model with two fields:
 
 ```python
 class User(Row):
@@ -42,11 +43,21 @@ class User(Row):
 rows = [User(id=i, name="ann", age=30) for i in range(100_000)]
 ```
 
+<!-- local-only:start -->
+
 Run it under `cProfile`, sorted by the time spent inside each function:
 
 ```sh
 python -m cProfile -s tottime build_rows.py | head -14
 ```
+
+Run the benchmark from the repository root to compare row construction:
+
+```sh
+poe bench
+```
+
+<!-- local-only:end -->
 
 ```text
 14200001 function calls (13900001 primitive calls) in 1.858 seconds
@@ -87,13 +98,23 @@ the tests still use it.
 
 Done when:
 
-- `python -m unittest` still passes, including the nested value and annotation
+- All existing tests still pass, including the nested value and annotation
   tests. The checks must stay as strict as before, so `True` is still rejected
   for an `int` field.
 - Building a row does no hint resolution. Run the profiler again and check that
   `resolve` and `validate_hint` are no longer called for each row.
-- `poe bench` shows the two-field `Row` construction within 3 times the
+- The local benchmark shows the two-field `Row` construction within 3 times the
   dataclass time. Write down the number you get.
+
+<!-- local-only:start -->
+
+Run the existing tests after your changes:
+
+```sh
+python -m unittest
+```
+
+<!-- local-only:end -->
 
 ## A second profile: reading fields in a query
 

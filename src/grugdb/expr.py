@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, assert_never, overload
 
 if TYPE_CHECKING:
-    from .model import FieldSpec
+    from grugdb.model import FieldSpec
 
 # Rows store their values in a tuple[object, ...]. The schema checked each value's type
 # when the row was built, but the static type is gone once it is inside the tuple.
@@ -106,7 +106,7 @@ class Field[T, K]:
 
     def check(self, value: K) -> K:
         """Return `value` unchanged if it fits the field's declared type."""
-        from .schema import matches
+        from grugdb.schema import matches
 
         if not matches(value, self.spec.hint):
             raise TypeError(f"invalid value for {self}: {value!r}")
@@ -172,6 +172,12 @@ class Compare[T](Expr[T]):
     value: object
 
     def test(self, row: object) -> bool:
+        """Return whether the row's field satisfies this comparison.
+
+        Use Python equality for == and !=, including None == None.
+        Ordering comparisons return False if either value is None.
+        Raise TypeError if the field cannot be read or is ambiguous.
+        """
         value = self.field.read(row)
         if self.op in (Op.EQ, Op.NE):
             return self.op.apply(value, self.value)

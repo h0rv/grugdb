@@ -1,8 +1,8 @@
-from .db import Database
-from .expr import Count, Expr, Field, Max, Min, Sum, UniqueField
-from .model import Column, Row, Unique, column
-from .query import Query
-from .table import RowId, Table
+from grugdb.db import Database
+from grugdb.expr import Count, Expr, Field, Max, Min, Sum, UniqueField
+from grugdb.model import Column, Row, Unique, column
+from grugdb.query import Query
+from grugdb.table import RowId, Table
 
 __all__ = [
     "Column",

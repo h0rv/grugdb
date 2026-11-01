@@ -29,7 +29,7 @@ def is_variadic(args: tuple[object, ...]) -> bool:
 
 def validate_hint(hint: object) -> None:
     """Raise `TypeError` unless values of `hint` are immutable and supported."""
-    from .model import Row
+    from grugdb.model import Row
 
     hint = resolve(hint)
     args = typing.get_args(hint)

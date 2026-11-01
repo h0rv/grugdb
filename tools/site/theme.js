@@ -16,8 +16,8 @@
     }
     const label = () => {
       const next = dark() ? "light" : "dark";
-      theme.textContent = next === "light" ? "Light mode" : "Dark mode";
-      theme.setAttribute("aria-label", `Switch to ${next} mode`);
+      theme.title = `Switch to ${next} mode`;
+      theme.setAttribute("aria-label", theme.title);
     };
     label();
     theme.hidden = false;
@@ -27,45 +27,6 @@
       try { localStorage.setItem("grugdb-theme", root.dataset.theme); } catch {}
       label();
     });
-
-    const tasks = [...document.querySelectorAll('input[type="checkbox"][data-task]')];
-    if (tasks.length) {
-      const progressKey = "grugdb-progress-v1";
-      const keys = new Set(tasks.map((task) => task.dataset.task));
-      const defaults = new Set(tasks.filter((task) => task.defaultChecked).map((task) => task.dataset.task));
-      const parseProgress = (value) => {
-        try {
-          const checked = JSON.parse(value);
-          return Array.isArray(checked) && checked.every((key) => typeof key === "string")
-            ? new Set(checked) : null;
-        } catch { return null; }
-      };
-      let completed = new Set(defaults);
-      try { completed = parseProgress(localStorage.getItem(progressKey)) ?? completed; } catch {}
-      const progress = document.createElement("p");
-      progress.dataset.progress = "";
-      progress.setAttribute("aria-live", "polite");
-      progress.setAttribute("aria-atomic", "true");
-      document.querySelector("main")?.prepend(progress);
-      const updateProgress = () => {
-        tasks.forEach((task) => { task.checked = completed.has(task.dataset.task); });
-        const count = [...keys].filter((key) => completed.has(key)).length;
-        progress.textContent = `${count} of ${keys.size} tasks complete`;
-      };
-      updateProgress();
-      tasks.forEach((task) => task.addEventListener("change", () => {
-        if (task.checked) completed.add(task.dataset.task);
-        else completed.delete(task.dataset.task);
-        updateProgress();
-        try { localStorage.setItem(progressKey, JSON.stringify([...completed])); } catch {}
-      }));
-      window.addEventListener("storage", (event) => {
-        if (event.key !== progressKey && event.key !== null) return;
-        try { if (event.storageArea !== localStorage) return; } catch { return; }
-        completed = parseProgress(event.newValue) ?? new Set(defaults);
-        updateProgress();
-      });
-    }
 
     const tooltip = document.createElement("div");
     tooltip.id = "api-tooltip";
@@ -156,6 +117,7 @@
       body.querySelectorAll("[data-view]").forEach((panel) => {
         panel.hidden = panel.dataset.view !== view;
       });
+      tooltip.dataset.view = view;
       position();
     };
     const show = (link) => {

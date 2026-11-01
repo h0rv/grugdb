@@ -50,8 +50,11 @@ api = [
     { cmd = "python -m tests.typing.check_types" },
 ]
 start = { cmd = "python -m tools.course", help = "Start the exercises on the work branch" }
-build = { cmd = "python tools/site.py", help = "Build the offline course website" }
-site = { cmd = "python tools/site.py --serve --open", help = "Build the course website and open it" }
+build = { cmd = "python -m tools.site", help = "Build the offline course website" }
+site = { cmd = "python -m tools.site --serve --open", help = "Build the course website and open it" }
+browser-assets = { shell = "npm --prefix tools/browser ci && npm --prefix tools/browser run build", help = "Build the optional browser editor and Python runtime" }
+browser = { sequence = ["browser-assets", "site"], help = "Build and open the interactive course" }
+browser-test = { shell = "npm --prefix tools/browser test", help = "Check the editor, WASM tools, and browser workspace" }
 bench = { cmd = "python bench/run.py", help = "Run the optional query benchmarks" }
 format = [
     { cmd = "ruff format ." },

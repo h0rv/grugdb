@@ -108,7 +108,23 @@ its keys having one type. A planner can read which field a condition uses. A
 compact storage layout can store integers as packed machine values instead of
 one Python object per value.
 
-## Set up
+## Start in your browser
+
+Start with [chapter 1](01-rows-and-tables.md#your-turn).
+
+Your edits are saved in this browser. Clearing site data removes them, and they
+do not follow you to another device. Download a JSON backup to keep your edits
+or import them in another browser. A ZIP contains the complete Python project,
+including the supplied tests. If saving fails, download a backup before leaving.
+Import only code you trust.
+
+<!-- local-only:start -->
+
+## Set up locally
+
+Use local CPython for profiling native performance, disk durability, subprocess
+crash tests, and threading. The browser can run the in-memory exercises, but it
+cannot reproduce those operating-system guarantees.
 
 You need Python 3.14 or newer and
 [uv](https://docs.astral.sh/uv/getting-started/installation/). Clone the
@@ -138,9 +154,14 @@ poe bench     # run the benchmarks
 poe all       # lint, type check, test, and build the site
 ```
 
+To continue browser work locally, extract the downloaded ZIP over this `work`
+branch. Keep a copy of any local edits before replacing files.
+
 Your work is in an ordinary git branch. If you are stuck,
 `git diff main -- src/grugdb/query.py` shows the reference code, and
 `git merge main` brings in course updates.
+
+<!-- local-only:end -->
 
 ## How to work
 

@@ -2,7 +2,9 @@
 
 A database has to keep its data correct when the process dies in the middle of a
 commit. You can test this directly. Start the transfer from chapter 9 in a child
-process, kill the child during the commit, and reopen the database.
+process, kill the child during the commit, and reopen the database. Use local
+CPython for this chapter's crash and durability tests. The browser cannot start
+child processes or test durable filesystem writes.
 
 ```python
 # A sketch of the test you'll write. transfer.py commits Ann -> Bob and
@@ -95,9 +97,15 @@ Done when:
 Test with a child process that calls `os._exit` at each step, then reopen the
 database in the parent process. Put the tests in `tests/test_recovery.py`:
 
+<!-- local-only:start -->
+
+Run the recovery tests from the repository root:
+
 ```sh
 python -m unittest tests.test_recovery
 ```
+
+<!-- local-only:end -->
 
 ## Part 2: the log
 

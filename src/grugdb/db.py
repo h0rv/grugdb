@@ -1,7 +1,7 @@
 from typing import Any, cast
 
-from .model import Row
-from .table import Table
+from grugdb.model import Row
+from grugdb.table import Table
 
 
 class Database:

@@ -48,17 +48,17 @@ def exercise_source(source: str, targets: Mapping[str, tuple[str, ...]]) -> str:
             if node.end_lineno is None:
                 raise ValueError(f"Missing source range for {name}.{method}")
             docstring = node.body[:1] if ast.get_docstring(node) is not None else []
-            node.body = [
-                *docstring,
-                ast.Raise(
-                    exc=ast.Call(
-                        func=ast.Name(id="NotImplementedError", ctx=ast.Load()),
-                        args=[ast.Constant(value=f"Exercise: {name}.{method}")],
-                        keywords=[],
-                    ),
-                    cause=None,
+            stub = ast.Raise(
+                exc=ast.Call(
+                    func=ast.Name(id="NotImplementedError", ctx=ast.Load()),
+                    args=[ast.Constant(value=f"Exercise: {name}.{method}")],
+                    keywords=[],
                 ),
-            ]
+                cause=None,
+            )
+            if len(node.body) == len(docstring) + 1 and ast.dump(node.body[-1]) == ast.dump(stub):
+                continue
+            node.body = [*docstring, stub]
             start = min([node.lineno, *(decorator.lineno for decorator in node.decorator_list)]) - 1
             changes.append(
                 (start, node.end_lineno, indent(ast.unparse(node), " " * node.col_offset) + "\n")
@@ -67,6 +67,28 @@ def exercise_source(source: str, targets: Mapping[str, tuple[str, ...]]) -> str:
     for start, end, replacement in sorted(changes, reverse=True):
         lines[start:end] = [replacement]
     return "".join(lines)
+
+
+def exercise_module(source: str, targets: Mapping[str, tuple[str, ...]], filename: str) -> str:
+    """Stub a module and remove imports used only by the replaced method bodies."""
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "check",
+            "--select",
+            "F401",
+            "--fix",
+            "--stdin-filename",
+            filename,
+            "-",
+        ],
+        input=exercise_source(source, targets),
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
 
 
 def start(root: Path) -> bool:
@@ -83,7 +105,9 @@ def start(root: Path) -> bool:
     git(root, "switch", "-c", BRANCH)
     for relative, targets in EXERCISES.items():
         path = root / relative
-        path.write_text(exercise_source(path.read_text(encoding="utf-8"), targets), "utf-8")
+        path.write_text(
+            exercise_module(path.read_text(encoding="utf-8"), targets, str(path)), "utf-8"
+        )
     subprocess.run(
         [sys.executable, "-m", "ruff", "format", *(str(root / path) for path in EXERCISES)],
         check=True,

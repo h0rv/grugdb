@@ -110,10 +110,10 @@ class TestTable(unittest.TestCase):
         """Bulk update returns the matched count and preserves rows on validation failure."""
         self.users.insert(User(id=1, name="ann", age=30))
         self.users.insert(User(id=2, name="bob", age=25))
-        self.assertEqual(self.users.update_where(User.age == 30, age=31), 1)
+        self.assertEqual(self.users.update_where(User.age.in_([30]), age=31), 1)
         self.assertEqual([user.age for user in self.users.scan()], [31, 25])
         with self.assertRaises(TypeError):
-            self.users.update_where(User.id >= 0, age="bad")
+            self.users.update_where(User.id.in_([1, 2]), age="bad")
         self.assertEqual([user.age for user in self.users.scan()], [31, 25])
 
     def test_delete_where(self) -> None:

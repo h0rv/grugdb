@@ -5,7 +5,9 @@ is a snapshot. A snapshot writes the whole database to a file, and a later
 process reads that file back.
 
 Calling `pickle.dump` on the database is not enough. This chapter explains which
-parts of the state a snapshot has to keep, and why.
+parts of the state a snapshot has to keep, and why. Use local CPython for this
+chapter's filesystem and second-process tests. The browser cannot test disk
+durability or start a second process.
 
 ## What has to survive
 
@@ -118,11 +120,17 @@ Done when:
   behind.
 - Indexes are rebuilt on load.
 
-Put your tests in `tests/test_storage.py` and run:
+Put your tests in `tests/test_storage.py`.
+
+<!-- local-only:start -->
+
+Run the storage tests from the repository root:
 
 ```sh
 python -m unittest tests.test_storage
 ```
+
+<!-- local-only:end -->
 
 ## Going further
 

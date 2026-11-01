@@ -142,9 +142,7 @@ the field an index covers.
 
 ## Your turn
 
-Open `src/grugdb/table.py`. `Table` stores rows in a `dict[RowId, T]` and gives
-out increasing IDs. You write these methods: `insert`, `get`, `update`,
-`delete`, `update_where`, `delete_where`, `scan`, and `__len__`.
+`Table` stores rows in a `dict[RowId, T]` and gives out increasing IDs.
 
 `insert` accepts only rows whose class is exactly the table's model, which is
 stored in `self.model`. `update` builds its new row with `replace`. `scan` wraps
@@ -167,11 +165,26 @@ Done when:
 - Two equal rows can be inserted and get different IDs.
 - `scan()` sees every successful write the next time it runs.
 
+<!-- local-only:start -->
+
+When working locally, run the table tests from the repository root:
+
 ```sh
 python -m unittest tests.test_table
 ```
 
-In the next chapter you turn `scan()` into a query engine.
+<!-- local-only:end -->
+
+Implement these methods in `src/grugdb/table.py`:
+
+- `Table.insert`
+- `Table.get`
+- `Table.update`
+- `Table.delete`
+- `Table.update_where`
+- `Table.delete_where`
+- `Table.scan`
+- `Table.__len__`
 
 ## Go deeper
 

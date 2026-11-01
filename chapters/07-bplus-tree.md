@@ -115,11 +115,17 @@ Done when:
 - Deleting every entry shrinks the tree back to an empty root.
 - Removing a missing entry always does what you documented.
 
-Write these tests in `tests/test_bplus_tree.py`, then run:
+Write these tests in `tests/test_bplus_tree.py`.
+
+<!-- local-only:start -->
+
+When working locally, run the B+ tree tests from the repository root:
 
 ```sh
 python -m unittest tests.test_bplus_tree
 ```
+
+<!-- local-only:end -->
 
 ## Compare the speed
 
@@ -129,7 +135,7 @@ The B+ tree does better at large sizes, and most of all on disk. On disk, each
 node is one page, and a lookup that reads fewer pages is faster. Add a benchmark
 to `bench/run.py` that compares `BPlusTree` with `SortedIndex` on the same
 workload. Check that the results match, and find the size at which the tree
-becomes faster on your machine.
+becomes faster on your machine. Run these measurements with local CPython.
 
 Real B+ trees use much bigger nodes. Each node is one disk page, usually 4 to 16
 KB, and an internal node holds hundreds of children. With that many children per
